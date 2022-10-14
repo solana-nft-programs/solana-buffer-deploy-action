@@ -1,48 +1,34 @@
-name: 'Solana buffer deploy'
-description: 'Github action to deploy a program buffer on Solana'
-author: 'Cardinal Labs'
+name: "Solana buffer deploy"
+description: "Github action to deploy a program buffer on Solana"
+author: "Cardinal Labs"
 branding:
-  icon: 'upload'
-  color: 'red'
+  icon: "upload"
+  color: "red"
 inputs:
   network:
-    description: 'The Solana network'
+    description: "The Solana network"
     required: true
-    default: 'devnet'
+    default: "devnet"
   program:
-    description: 'The program to build and upload'
+    description: "The program to build and upload"
     required: true
   program-id:
-    description: 'The program id of the program we are uploading'
+    description: "The program id of the program we are uploading"
     required: true
   buffer-authority:
-    description: 'The buffer authority to set'
+    description: "The buffer authority to set"
     required: true
   keypair:
-    description: 'The keypair to use for deploys'
+    description: "The keypair to use for deploys"
     required: true
 outputs:
   buffer:
-    description: 'The buffer address'
+    description: "The buffer address"
   idl-buffer:
-    description: 'The idl buffer address.'
+    description: "The idl buffer address."
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
-    - uses: actions/checkout@v3
-    - uses: ./.github/actions/install-linux-build-deps
-    - uses: actions-rs/toolchain@v1
-      with:
-        override: true
-        profile: minimal
-        toolchain: ${{ env.RUST_TOOLCHAIN }}
-    - uses: ./.github/actions/install-solana
-      with:
-        solana_version: ${{ env.SOLANA_VERSION }}
-    - uses: ./.github/actions/install-anchor
-      with:
-        anchor_git: ${{ env.ANCHOR_GIT }}
-        anchor_version: ${{ env.ANCHOR_VERSION }}
     - uses: actions/cache@v2
       name: Cache Builds
       id: cache-buffer
