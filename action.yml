@@ -1,0 +1,134 @@
+name: 'Solana buffer deploy'
+description: 'Github action to deploy a program buffer on Solana'
+author: 'Cardinal Labs'
+branding:
+  icon: 'upload'
+  color: 'red'
+inputs:
+  network:
+    description: 'The Solana network'
+    required: true
+    default: 'devnet'
+  program:
+    description: 'The program to build and upload'
+    required: true
+  program-id:
+    description: 'The program id of the program we are uploading'
+    required: true
+  buffer-authority:
+    description: 'The buffer authority to set'
+    required: true
+  keypair:
+    description: 'The keypair to use for deploys'
+    required: true
+outputs:
+  buffer:
+    description: 'The buffer address'
+  idl-buffer:
+    description: 'The idl buffer address.'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v3
+    - uses: ./.github/actions/install-linux-build-deps
+    - uses: actions-rs/toolchain@v1
+      with:
+        override: true
+        profile: minimal
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
+    - uses: ./.github/actions/install-solana
+      with:
+        solana_version: ${{ env.SOLANA_VERSION }}
+    - uses: ./.github/actions/install-anchor
+      with:
+        anchor_git: ${{ env.ANCHOR_GIT }}
+        anchor_version: ${{ env.ANCHOR_VERSION }}
+    - uses: actions/cache@v2
+      name: Cache Builds
+      id: cache-buffer
+      with:
+        path: |
+          ./target
+          ./buffer.out
+          ./idl-buffer.out
+        key: ${{ inputs.network }}-${{ inputs.program-id }}-anchor-verified-build-${{ hashFiles('programs/**/*.rs') }}-${{ hashFiles('./**/Cargo.lock') }}
+    - run: ~/.cargo/bin/anchor build --verifiable -p $PROGRAM
+      shell: bash
+      # if: steps.cache-buffer.outputs.cache-hit != 'true'
+      env:
+        PROGRAM: ${{ inputs.program }}
+    - run: solana-keygen new -o keyp --no-bip39-passphrase
+      shell: bash
+    - run: echo KEYPAIR
+      shell: bash
+      env:
+        KEYPAIR: ${{ inputs.keypair }}
+    - run: echo "$KEYPAIR" > ./deploy-keypair.json && chmod 600 ./deploy-keypair.json
+      shell: bash
+      env:
+        KEYPAIR: ${{ inputs.keypair }}
+    - run: cat deploy-keypair.json
+      shell: bash
+    - name: Buffer Deploy
+      # if: steps.cache-buffer.outputs.cache-hit != 'true'
+      id: buffer-deploy
+      uses: nick-invision/retry@v2
+      with:
+        timeout_minutes: 30
+        max_attempts: 10
+        shell: bash
+        command: solana program write-buffer --buffer ./keyp -k ./deploy-keypair.json ./target/verifiable/$PROGRAM.so -u $NETWORK > ./buffer.out
+      env:
+        NETWORK: ${{ inputs.network }}
+        PROGRAM: ${{ inputs.program }}
+    - name: IDL Buffer Deploy
+      uses: nick-invision/retry@v2
+      id: idl-buffer-deploy
+      # if: steps.cache-buffer.outputs.cache-hit != 'true'
+      with:
+        timeout_minutes: 10
+        max_attempts: 50
+        shell: bash
+        command: ~/.cargo/bin/anchor idl write-buffer $PROGRAM_ID --filepath ./target/idl/$PROGRAM.json --provider.cluster $NETWORK --provider.wallet ./deploy-keypair.json > idl-buffer.out
+      env:
+        PROGRAM_ID: ${{ inputs.program-id }}
+        PROGRAM: ${{ inputs.program }}
+        NETWORK: ${{ inputs.network }}
+    - name: Buffer Deploy Store
+      shell: bash
+      id: buffer-deploy-store
+      run: |
+        echo "::set-output name=BUFFER::$(cat buffer.out | sed 's/Buffer: //g' | xargs echo -n)" &&
+        echo "::set-output name=IDL_BUFFER::$(cat idl-buffer.out | sed 's/Idl buffer created: //g' | xargs echo -n)"
+    - run: echo "The buffer is ${{ steps.buffer-deploy-store.outputs.BUFFER }}"
+      shell: bash
+    - run: echo "The IDL buffer is ${{ steps.buffer-deploy-store.outputs.IDL_BUFFER }}"
+      shell: bash
+    - name: Transfer idl buffer to authority
+      uses: nick-invision/retry@v2
+      # if: steps.cache-buffer.outputs.cache-hit != 'true'
+      with:
+        timeout_minutes: 10
+        max_attempts: 50
+        shell: bash
+        command: anchor idl set-authority $IDL_BUFFER --provider.cluster $NETWORK --program-id $PROGRAM_ID --new-authority $AUTHORITY --provider.wallet ./deploy-keypair.json
+      env:
+        IDL_BUFFER: ${{ steps.buffer-deploy-store.outputs.IDL_BUFFER }}
+        AUTHORITY: ${{ inputs.buffer-authority }}
+        NETWORK: ${{ inputs.network }}
+        PROGRAM_ID: ${{ inputs.program-id }}
+    - name: Transfer buffer to authority
+      uses: nick-invision/retry@v2
+      # if: steps.cache-buffer.outputs.cache-hit != 'true'
+      with:
+        timeout_minutes: 10
+        max_attempts: 50
+        shell: bash
+        command: solana program set-buffer-authority $BUFFER -k ./deploy-keypair.json --new-buffer-authority $AUTHORITY -u $NETWORK
+      env:
+        BUFFER: ${{ steps.buffer-deploy-store.outputs.BUFFER }}
+        AUTHORITY: ${{ inputs.buffer-authority }}
+        NETWORK: ${{ inputs.network }}
+    - run: rm ./deploy-keypair.json
+      shell: bash
+      if: always()
