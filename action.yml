@@ -39,6 +39,7 @@ runs:
       shell: bash
       env:
         KEYPAIR: ${{ inputs.keypair }}
+
     - name: Buffer Deploy
       uses: nick-invision/retry@v2
       with:
@@ -51,6 +52,7 @@ runs:
         PROGRAM: ${{ inputs.program }}
     - name: Set buffer output
       id: buffer-deploy
+      shell: bash
       run: |
         echo "buffer=$(cat buffer.out | sed 's/Buffer: //g' | xargs echo -n)" >> $GITHUB_OUTPUT
 
@@ -67,6 +69,7 @@ runs:
         NETWORK: ${{ inputs.network }}
     - name: Set idl buffer output
       id: idl-buffer-deploy
+      shell: bash
       run: |
         echo "idl_buffer=$(cat idl-buffer.out | sed 's/Idl buffer created: //g' | xargs echo -n)" >> $GITHUB_OUTPUT
 
@@ -87,6 +90,7 @@ runs:
         AUTHORITY: ${{ inputs.buffer-authority }}
         NETWORK: ${{ inputs.network }}
         PROGRAM_ID: ${{ inputs.program-id }}
+
     - name: Transfer buffer to authority
       uses: nick-invision/retry@v2
       with:
@@ -98,6 +102,6 @@ runs:
         BUFFER: ${{ steps.buffer-deploy.outputs.buffer }}
         AUTHORITY: ${{ inputs.buffer-authority }}
         NETWORK: ${{ inputs.network }}
+
     - run: rm ./deploy-keypair.json
       shell: bash
-      if: always()

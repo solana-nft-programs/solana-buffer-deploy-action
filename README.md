@@ -15,7 +15,7 @@ Use this github action to automate Solana program deployments straight from Gith
 You can now consume the action by referencing the v1 branch
 
 ```yaml
-uses: actions/solana-buffer-deploy@v0.1.0
+uses: actions/solana-buffer-deploy@v0.1.2
 with:
   network: https://api.devnet.solana.com
   program: my_program
