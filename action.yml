@@ -24,8 +24,10 @@ inputs:
 outputs:
   buffer:
     description: "The buffer address"
+    value: ${{ steps.buffer-deploy.outputs.buffer }}
   idl-buffer:
     description: "The idl buffer address."
+    value: ${{ steps.buffer-deploy.outputs.idl-buffer }}
 runs:
   using: "composite"
   steps:
