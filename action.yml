@@ -40,7 +40,6 @@ runs:
       env:
         KEYPAIR: ${{ inputs.keypair }}
     - name: Buffer Deploy
-      id: buffer-deploy
       uses: nick-invision/retry@v2
       with:
         timeout_minutes: 30
@@ -50,9 +49,13 @@ runs:
       env:
         NETWORK: ${{ inputs.network }}
         PROGRAM: ${{ inputs.program }}
+    - name: Set buffer output
+      id: buffer-deploy
+      run: |
+        echo "buffer=$(cat buffer.out | sed 's/Buffer: //g' | xargs echo -n)" >> $GITHUB_OUTPUT
+
     - name: IDL Buffer Deploy
       uses: nick-invision/retry@v2
-      id: idl-buffer-deploy
       with:
         timeout_minutes: 10
         max_attempts: 10
@@ -62,16 +65,16 @@ runs:
         PROGRAM_ID: ${{ inputs.program-id }}
         PROGRAM: ${{ inputs.program }}
         NETWORK: ${{ inputs.network }}
-    - name: Buffer Deploy Store
-      shell: bash
-      id: buffer-deploy-store
+    - name: Set idl buffer output
+      id: idl-buffer-deploy
       run: |
-        echo "::set-output name=BUFFER::$(cat buffer.out | sed 's/Buffer: //g' | xargs echo -n)" &&
-        echo "::set-output name=IDL_BUFFER::$(cat idl-buffer.out | sed 's/Idl buffer created: //g' | xargs echo -n)"
-    - run: echo "The buffer is ${{ steps.buffer-deploy-store.outputs.BUFFER }}"
+        echo "idl_buffer=$(cat idl-buffer.out | sed 's/Idl buffer created: //g' | xargs echo -n)" >> $GITHUB_OUTPUT
+
+    - run: echo "buffer=${{ steps.buffer-deploy.outputs.buffer }}"
       shell: bash
-    - run: echo "The IDL buffer is ${{ steps.buffer-deploy-store.outputs.IDL_BUFFER }}"
+    - run: echo "idl_buffer=${{ steps.buffer-deploy.outputs.idl_buffer }}"
       shell: bash
+
     - name: Transfer idl buffer to authority
       uses: nick-invision/retry@v2
       with:
@@ -80,7 +83,7 @@ runs:
         shell: bash
         command: anchor idl set-authority $IDL_BUFFER --provider.cluster $NETWORK --program-id $PROGRAM_ID --new-authority $AUTHORITY --provider.wallet ./deploy-keypair.json
       env:
-        IDL_BUFFER: ${{ steps.buffer-deploy-store.outputs.IDL_BUFFER }}
+        IDL_BUFFER: ${{ steps.buffer-deploy.outputs.idl_buffer }}
         AUTHORITY: ${{ inputs.buffer-authority }}
         NETWORK: ${{ inputs.network }}
         PROGRAM_ID: ${{ inputs.program-id }}
@@ -92,7 +95,7 @@ runs:
         shell: bash
         command: solana program set-buffer-authority $BUFFER -k ./deploy-keypair.json --new-buffer-authority $AUTHORITY -u $NETWORK
       env:
-        BUFFER: ${{ steps.buffer-deploy-store.outputs.BUFFER }}
+        BUFFER: ${{ steps.buffer-deploy.outputs.buffer }}
         AUTHORITY: ${{ inputs.buffer-authority }}
         NETWORK: ${{ inputs.network }}
     - run: rm ./deploy-keypair.json
