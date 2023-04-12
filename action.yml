@@ -70,10 +70,10 @@ runs:
       shell: bash
       run: |
         echo "buffer=$(cat buffer.out | sed 's/Buffer: //g' | xargs echo -n)" >> $GITHUB_OUTPUT
-        echo "idl_buffer=$(cat idl-buffer.out | sed 's/Idl buffer created: //g' | xargs echo -n)" >> $GITHUB_OUTPUT
+        echo "idl-buffer=$(cat idl-buffer.out | sed 's/Idl buffer created: //g' | xargs echo -n)" >> $GITHUB_OUTPUT
     - run: echo "buffer=${{ steps.buffer-deploy.outputs.buffer }}"
       shell: bash
-    - run: echo "idl_buffer=${{ steps.buffer-deploy.outputs.idl_buffer }}"
+    - run: echo "idl-buffer=${{ steps.buffer-deploy.outputs.idl-buffer }}"
       shell: bash
 
     - name: Transfer idl buffer to authority
@@ -84,7 +84,7 @@ runs:
         shell: bash
         command: anchor idl set-authority $IDL_BUFFER --provider.cluster $NETWORK --program-id $PROGRAM_ID --new-authority $AUTHORITY --provider.wallet ./deploy-keypair.json
       env:
-        IDL_BUFFER: ${{ steps.buffer-deploy.outputs.idl_buffer }}
+        IDL_BUFFER: ${{ steps.buffer-deploy.outputs.idl-buffer }}
         AUTHORITY: ${{ inputs.buffer-authority }}
         NETWORK: ${{ inputs.network }}
         PROGRAM_ID: ${{ inputs.program-id }}
