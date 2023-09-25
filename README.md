@@ -1,6 +1,6 @@
 # Solana Buffer Deploy Github Action
 
-Use this github action to automate Solana program deployments straight from Github. Use in conjunction with https://github.com/cardinal-labs/squads-program-upgrade.
+Use this github action to automate Solana program deployments straight from Github.
 
 ## Usage
 
